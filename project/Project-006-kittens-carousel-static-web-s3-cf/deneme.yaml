@@ -1,0 +1,61 @@
+yaml
+Copy code
+Resources:
+  EproBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: eproticaret.com
+
+  EproBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EproBucket
+      PolicyDocument:
+        Id: EproBucketPolicy
+        Version: '2012-10-17'
+        Statement:
+        - Sid: PublicReadGetObject
+          Effect: Allow
+          Principal: '*'
+          Action: 's3:GetObject'
+          Resource: !Join ['', ['arn:aws:s3:::', !Ref EproBucket, '/*']]
+ 
+  EproCloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+        - DomainName: !GetAtt EproBucket.DomainName
+          Id: epro-origin
+          S3OriginConfig:
+            OriginAccessIdentity: ''
+        Enabled: true
+        DefaultCacheBehavior:
+          ForwardedValues:
+            QueryString: true
+          TargetOriginId: epro-origin
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        ViewerCertificate:
+          AcmCertificateArn: <your_certificate_arn>
+          SslSupportMethod: sni-only
+        PriceClass: PriceClass_All
+        HttpVersion: http2
+        Aliases:
+        - deneme.eproticaret.com
+
+  EproDnsRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: eproticaret.com.
+      Name: deneme.eproticaret.com.
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt EproCloudFront.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+      TTL: 300
+
+Outputs:
+  CloudFrontDomainName:
+    Value: !GetAtt EproCloudFront.DomainName
+    Description: CloudFront Domain Name
